@@ -1,14 +1,18 @@
-import "dotenv/config";
-import { PrismaClient } from "./generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
+import express from "express";
+import { db } from "./db.js";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-export const prisma = new PrismaClient({ adapter });
+const app = express();
 
-async function main() {
-  const val = await prisma.user.findMany({
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+app.get("/user", async (req, res) => {
+  const val = await db.user.findMany({});
+  res.json({
+    data: val,
   });
-  console.log(val);
-}
+});
 
-main();
+app.listen(3000, () => {
+  console.log("Listening on port 3000!");
+});
