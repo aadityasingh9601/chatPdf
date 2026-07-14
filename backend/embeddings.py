@@ -9,7 +9,7 @@ key: str = os.getenv("GOOGLE_GEMINI_KEY")
 
 embed_model = GoogleGenAIEmbedding(
     model_name="gemini-embedding-2-preview",
-    embed_batch_size=100,
+    embed_batch_size=50,
     api_key=key,
 )
 
