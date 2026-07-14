@@ -1,18 +1,36 @@
 from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
 from google.genai.types import EmbedContentConfig
-from dotenv import load_dotenv, dotenv_values
-from llama_index.llms.google_genai import GoogleGenAI
+from dotenv import load_dotenv
 import os
+from typing import List, Optional
+
+from utils import helper
 load_dotenv()
 
 key: str = os.getenv("GOOGLE_GEMINI_KEY")
 
-embed_model = GoogleGenAIEmbedding(
+TARGET_DIM = 768
+
+
+class TruncatedGoogleGenAIEmbedding(GoogleGenAIEmbedding):
+    """GoogleGenAIEmbedding subclass that truncates embeddings to TARGET_DIM."""
+
+    def _embed_texts(
+        self, texts: List[str], task_type: Optional[str] = None
+    ) -> List[List[float]]:
+        embeddings = super()._embed_texts(texts, task_type)
+        return [helper.truncate_embedding(e, TARGET_DIM) for e in embeddings]
+
+    async def _aembed_texts(
+        self, texts: List[str], task_type: Optional[str] = None
+    ) -> List[List[float]]:
+        embeddings = await super()._aembed_texts(texts, task_type)
+        return [helper.truncate_embedding(e, TARGET_DIM) for e in embeddings]
+
+
+embed_model = TruncatedGoogleGenAIEmbedding(
     model_name="gemini-embedding-2-preview",
     embed_batch_size=50,
     api_key=key,
 )
 
-# Pass the indexes here in-place of "Google Gemini Embeddings"
-embeddings = embed_model.get_text_embedding("Google Gemini Embeddings.")
-print(embeddings)

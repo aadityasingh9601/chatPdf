@@ -17,7 +17,7 @@ async def root():
 # Get all users
 @app.get("/users")
 async def getAllUsersData():
-    response = supabase.table("User").select("*").execute()
+    response = supabase.table("User").select("name email").execute()
     return response
 
 # Get single user
