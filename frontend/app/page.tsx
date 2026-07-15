@@ -23,6 +23,14 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [uploadedPdfs, setUploadedPdfs] = useState([
+    { id: "1", name: "research-paper.pdf" },
+    { id: "2", name: "lecture-notes-ml.pdf" },
+    { id: "3", name: "project-report.pdf" },
+  ]);
+  const [pdfToDelete, setPdfToDelete] = useState<{ id: string; name: string } | null>(null);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -116,6 +124,20 @@ export default function Home() {
     setPdfName("");
     setMessages([]);
     setPdfStatus("idle");
+  };
+
+  const handleSelectPdf = (pdf: { id: string; name: string }) => {
+    setPdfName(pdf.name);
+    setPdfStatus("ready");
+    setMessages([]);
+    setSidebarOpen(false);
+  };
+
+  const handleConfirmDelete = () => {
+    // TODO: Implement actual delete logic (call your delete handler)
+    console.log("Delete PDF:", pdfToDelete);
+    setUploadedPdfs((prev) => prev.filter((p) => p.id !== pdfToDelete?.id));
+    setPdfToDelete(null);
   };
 
   // ─── Upload Screen ───
@@ -303,10 +325,120 @@ export default function Home() {
 
   // ─── Chat Screen ───
   return (
-    <div className="flex flex-1 flex-col h-full">
+    <div className="flex flex-1 flex-col h-full relative">
+      {/* Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-40 animate-fade-in-fast"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-72 bg-white/95 backdrop-blur-sm shadow-2xl z-50 flex flex-col animate-slide-in ${
+          sidebarOpen ? "" : "-translate-x-full"
+        } transition-transform duration-200 ease-out`}
+      >
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-100">
+          <h3 className="text-sm font-semibold text-zinc-900">Your PDFs</h3>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* PDF List */}
+        <div className="flex-1 overflow-y-auto py-2">
+          {uploadedPdfs.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <p className="text-xs text-zinc-400">No PDFs uploaded yet</p>
+            </div>
+          ) : (
+            <div className="space-y-0.5 px-2">
+              {uploadedPdfs.map((pdf) => (
+                <div
+                  key={pdf.id}
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
+                    pdfName === pdf.name
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-zinc-600 hover:bg-zinc-50"
+                  }`}
+                  onClick={() => handleSelectPdf(pdf)}
+                >
+                  <svg className="w-4 h-4 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  </svg>
+                  <span className="flex-1 text-sm truncate">{pdf.name}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPdfToDelete(pdf);
+                    }}
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-300 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Delete Confirmation Modal */}
+      {pdfToDelete && (
+        <div className="fixed inset-0 flex items-center justify-center z-[60] animate-fade-in-fast">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setPdfToDelete(null)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 animate-fade-in">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-50 mx-auto mb-4">
+              <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
+            </div>
+            <h4 className="text-sm font-semibold text-zinc-900 text-center">Delete PDF</h4>
+            <p className="text-xs text-zinc-500 text-center mt-1.5">
+              Are you sure you want to delete <span className="font-medium text-zinc-700">{pdfToDelete.name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setPdfToDelete(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/25"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-white/80 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 hover:text-indigo-500 hover:bg-indigo-50 transition-colors shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 shrink-0">
             <svg
               className="w-5 h-5 text-indigo-500"
