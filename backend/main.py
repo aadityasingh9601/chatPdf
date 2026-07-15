@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile, Form
 from pydantic import BaseModel, Field # To define data model/structure
 from db import supabase
 import json
+from query import answerUserQuery
 
 class User(BaseModel):
     name: str | None = Field(default=None)
@@ -33,3 +34,20 @@ async def createUser(data:User):
     print(data)
     response = supabase.table("User").insert(data.model_dump()).execute()
     return response
+
+# Upload pdf.
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    print(file)
+    return {
+        "filename": file.filename,
+        "content_type": file.content_type,
+    }
+
+# Ask query.
+@app.get("/api/userquery")
+def user_query(query: str):
+    print("user_query", query)
+    response = answerUserQuery(query)
+    return {"answer": str(response)}
+

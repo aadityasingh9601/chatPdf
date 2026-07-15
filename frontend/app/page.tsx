@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, FormEvent } from "react";
+import { uploadData } from "./lib/actions/uploadData";
+import { sendQuery } from "./lib/actions/sendQuery";
 
 interface Message {
   role: "user" | "assistant";
@@ -35,6 +37,8 @@ export default function Home() {
   const handleFile = (file: File) => {
     if (file.type === "application/pdf") {
       setPdfFile(file);
+      console.log(file.name);
+      console.log(file);
       setPdfName(file.name);
       setPdfStatus("selected");
     }
@@ -61,7 +65,8 @@ export default function Home() {
 
     // TODO: Replace with actual API call to backend to upload PDF
     // For now, simulate a backend call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const res = await uploadData(pdfFile);
+    console.log(res);
 
     setPdfStatus("ready");
   };
@@ -84,14 +89,19 @@ export default function Home() {
 
     // TODO: Replace with actual API call to backend
     // Example endpoint: POST /api/chat with { pdfName, question }
-    setTimeout(() => {
+    const res = await sendQuery(question);
+    console.log(res);
+    if (res.success) {
       const assistantMessage: Message = {
         role: "assistant",
-        content: `This is a placeholder response. Connect your backend to get real answers from the PDF "${pdfName}".`,
+        content: res.message.answer,
       };
       setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1500);
+    }
+    else{
+      setMessages((prev) => [...prev, {role:"assistant",content:"Something went wrong!"}])
+    }
+    setIsLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -115,8 +125,18 @@ export default function Home() {
         <div className="w-full max-w-lg animate-fade-in">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/80 backdrop-blur-sm mb-4 shadow-lg shadow-indigo-500/20">
-              <svg className="w-8 h-8 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+              <svg
+                className="w-8 h-8 text-indigo-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                />
               </svg>
             </div>
             <h1 className="text-2xl font-semibold text-white drop-shadow-sm">
@@ -135,24 +155,33 @@ export default function Home() {
             className={`
               group cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center
               transition-all duration-200 bg-white/90 backdrop-blur-sm shadow-xl shadow-black/5
-              ${isDragging
-                ? "upload-active border-indigo-400 bg-indigo-50/80"
-                : "border-zinc-200 hover:border-indigo-300 hover:bg-white"
+              ${
+                isDragging
+                  ? "upload-active border-indigo-400 bg-indigo-50/80"
+                  : "border-zinc-200 hover:border-indigo-300 hover:bg-white"
               }
             `}
           >
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 transition-colors mb-4">
-              <svg className="w-6 h-6 text-zinc-400 group-hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+              <svg
+                className="w-6 h-6 text-zinc-400 group-hover:text-indigo-500 transition-colors"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                />
               </svg>
             </div>
             <p className="text-sm font-medium text-zinc-700">
               Drop your PDF here, or{" "}
               <span className="text-indigo-500">browse</span>
             </p>
-            <p className="text-xs text-zinc-400 mt-2">
-              Supports PDF files
-            </p>
+            <p className="text-xs text-zinc-400 mt-2">Supports PDF files</p>
           </div>
 
           <input
@@ -178,20 +207,42 @@ export default function Home() {
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl shadow-black/5 p-6">
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 shrink-0">
-                <svg className="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                <svg
+                  className="w-6 h-6 text-indigo-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                  />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-zinc-900 truncate">{pdfName}</p>
+                <p className="text-sm font-medium text-zinc-900 truncate">
+                  {pdfName}
+                </p>
                 <p className="text-xs text-zinc-400 mt-0.5">PDF document</p>
               </div>
               <button
                 onClick={handleCancelUpload}
                 className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18 18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -222,9 +273,24 @@ export default function Home() {
         <div className="w-full max-w-md animate-fade-in">
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl shadow-black/5 p-8 text-center">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-50 mb-4">
-              <svg className="w-7 h-7 text-indigo-500 animate-spin-slow" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <svg
+                className="w-7 h-7 text-indigo-500 animate-spin-slow"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
               </svg>
             </div>
             <p className="text-sm font-medium text-zinc-900">Uploading PDF</p>
@@ -242,17 +308,25 @@ export default function Home() {
       <header className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-white/80 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 shrink-0">
-            <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            <svg
+              className="w-5 h-5 text-indigo-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+              />
             </svg>
           </div>
           <div className="min-w-0">
             <h2 className="text-sm font-medium text-zinc-900 truncate">
               {pdfName}
             </h2>
-            <p className="text-xs text-zinc-400">
-              Ready to answer questions
-            </p>
+            <p className="text-xs text-zinc-400">Ready to answer questions</p>
           </div>
         </div>
         <button
@@ -269,8 +343,18 @@ export default function Home() {
           <div className="flex flex-1 items-center justify-center h-full min-h-[300px]">
             <div className="text-center animate-fade-in">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/60 backdrop-blur-sm mb-3 shadow-sm">
-                <svg className="w-6 h-6 text-zinc-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                <svg
+                  className="w-6 h-6 text-zinc-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
+                  />
                 </svg>
               </div>
               <p className="text-sm text-white/70">
@@ -281,7 +365,10 @@ export default function Home() {
         ) : (
           <div className="max-w-2xl mx-auto space-y-6">
             {messages.map((msg, i) => (
-              <div key={i} className={`animate-fade-in flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={i}
+                className={`animate-fade-in flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     msg.role === "user"
@@ -297,9 +384,18 @@ export default function Home() {
               <div className="flex justify-start animate-fade-in">
                 <div className="bg-white/90 backdrop-blur-sm rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
                   <div className="flex gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce" style={{ animationDelay: "300ms" }} />
+                    <span
+                      className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    />
                   </div>
                 </div>
               </div>
@@ -327,8 +423,18 @@ export default function Home() {
               disabled={!input.trim() || isLoading}
               className="shrink-0 w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:bg-zinc-200 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
             >
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+                />
               </svg>
             </button>
           </div>
