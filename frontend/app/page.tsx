@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { uploadData } from "./lib/actions/uploadData";
 import { sendQuery } from "./lib/actions/sendQuery";
 import { createClient } from "./lib/supabase/client";
-
-const supabase = createClient();
-const { data, error } = await supabase.auth.getUserIdentities();
-const userId = data?.identities[0].user_id;
 
 interface Message {
   role: "user" | "assistant";
@@ -17,7 +14,10 @@ interface Message {
 type PdfStatus = "idle" | "selected" | "uploading" | "ready";
 
 export default function Home() {
-  const [pdfStatus, setPdfStatus] = useState<PdfStatus>("ready");
+  const router = useRouter();
+  const supabase = createClient();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [pdfStatus, setPdfStatus] = useState<PdfStatus>("idle");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -29,12 +29,24 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [uploadedPdfs, setUploadedPdfs] = useState([
-    { id: "1", name: "research-paper.pdf" },
-    { id: "2", name: "lecture-notes-ml.pdf" },
-    { id: "3", name: "project-report.pdf" },
-  ]);
-  const [pdfToDelete, setPdfToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [uploadedPdfs, setUploadedPdfs] = useState<
+    { id: string; name: string }[]
+  >([{ id: "1", name: "test.pdf" }]);
+  const [pdfToDelete, setPdfToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        setUserId(data.user.id);
+        // TODO: Fetch user's uploaded PDFs from your backend and call setUploadedPdfs
+      }
+    };
+    init();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -77,7 +89,7 @@ export default function Home() {
     setPdfStatus("uploading");
     // TODO: Replace with actual API call to backend to upload PDF
     // For now, simulate a backend call
-    const res = await uploadData(userId,  pdfFile);
+    const res = await uploadData(userId, pdfFile);
     console.log(res);
 
     setPdfStatus("ready");
@@ -109,9 +121,11 @@ export default function Home() {
         content: res.message.answer,
       };
       setMessages((prev) => [...prev, assistantMessage]);
-    }
-    else{
-      setMessages((prev) => [...prev, {role:"assistant",content:"Something went wrong!"}])
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Something went wrong!" },
+      ]);
     }
     setIsLoading(false);
   };
@@ -121,6 +135,11 @@ export default function Home() {
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/auth");
   };
 
   const removePdf = () => {
@@ -145,7 +164,7 @@ export default function Home() {
   };
 
   // ─── Upload Screen ───
-  if (pdfStatus === "idle") {
+  if (pdfStatus === "idle" && uploadedPdfs.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-lg animate-fade-in">
@@ -351,8 +370,18 @@ export default function Home() {
             onClick={() => setSidebarOpen(false)}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -375,8 +404,18 @@ export default function Home() {
                   }`}
                   onClick={() => handleSelectPdf(pdf)}
                 >
-                  <svg className="w-4 h-4 shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  <svg
+                    className="w-4 h-4 shrink-0 text-indigo-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                    />
                   </svg>
                   <span className="flex-1 text-sm truncate">{pdf.name}</span>
                   <button
@@ -386,8 +425,18 @@ export default function Home() {
                     }}
                     className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-300 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18 18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -406,13 +455,29 @@ export default function Home() {
           />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 animate-fade-in">
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-50 mx-auto mb-4">
-              <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              <svg
+                className="w-5 h-5 text-red-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                />
               </svg>
             </div>
-            <h4 className="text-sm font-semibold text-zinc-900 text-center">Delete PDF</h4>
+            <h4 className="text-sm font-semibold text-zinc-900 text-center">
+              Delete PDF
+            </h4>
             <p className="text-xs text-zinc-500 text-center mt-1.5">
-              Are you sure you want to delete <span className="font-medium text-zinc-700">{pdfToDelete.name}</span>? This action cannot be undone.
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-zinc-700">
+                {pdfToDelete.name}
+              </span>
+              ? This action cannot be undone.
             </p>
             <div className="flex gap-3 mt-5">
               <button
@@ -439,8 +504,18 @@ export default function Home() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 hover:text-indigo-500 hover:bg-indigo-50 transition-colors shrink-0"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+              />
             </svg>
           </button>
           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 shrink-0">
@@ -460,17 +535,25 @@ export default function Home() {
           </div>
           <div className="min-w-0">
             <h2 className="text-sm font-medium text-zinc-900 truncate">
-              {pdfName}
+              {pdfName || "ChatPDF"}
             </h2>
             <p className="text-xs text-zinc-400">Ready to answer questions</p>
           </div>
         </div>
-        <button
-          onClick={removePdf}
-          className="text-xs text-zinc-400 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
-        >
-          New PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={removePdf}
+            className="text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors px-3.5 py-2 rounded-lg shadow-sm"
+          >
+            New PDF
+          </button>
+          <button
+            onClick={handleLogout}
+            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors px-3.5 py-2 rounded-lg"
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* Messages */}
