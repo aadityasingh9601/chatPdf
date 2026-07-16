@@ -55,6 +55,10 @@ async def upload_file(userId:str,file: UploadFile = File(...)):
     print(userId)
     saveFile(file)
     buildIndex(userId)
+    # Save the document in documents table.
+    res = supabase.table("documents").insert({ "user_id": userId, "file_name": file.filename }).execute()
+    print(res)
+  
     removeFile(f"data/{file.filename}")
     return {
         "filename": file.filename,
@@ -69,4 +73,14 @@ def user_query(userId:str, pdfName:str, query: str):
     print(f"pdfName -> {pdfName}")
     response = answerUserQuery(userId, pdfName, query)
     return {"answer": str(response)}
+
+# Fetch all user's pdfs.
+@app.get("/api/getpdfs")
+def get_pdfs(userId:str):
+    print(f"userId -> {userId}")
+    response = supabase.table("documents").select("id,file_name").eq("user_id",userId).execute()
+    print(response)
+    return response
+
+# Delete user's pdfs.
 

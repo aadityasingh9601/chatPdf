@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { uploadData } from "./lib/actions/uploadData";
 import { sendQuery } from "./lib/actions/sendQuery";
+import { fetchData } from "./lib/actions/fetchData";
 import { createClient } from "./lib/supabase/client";
 
 interface Message {
@@ -30,19 +31,22 @@ export default function Home() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadedPdfs, setUploadedPdfs] = useState<
-    { id: string; name: string }[]
-  >([{ id: "1", name: "test.pdf" }]);
+    { id: string; file_name: string }[]
+  >([]);
   const [pdfToDelete, setPdfToDelete] = useState<{
     id: string;
-    name: string;
+    file_name: string;
   } | null>(null);
 
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
+      console.log("44",data);
       if (data.user) {
         setUserId(data.user.id);
         // TODO: Fetch user's uploaded PDFs from your backend and call setUploadedPdfs
+       const res = await fetchData(data.user.id);
+       setUploadedPdfs(res?.message.data)
       }
     };
     init();
@@ -149,8 +153,8 @@ export default function Home() {
     setPdfStatus("idle");
   };
 
-  const handleSelectPdf = (pdf: { id: string; name: string }) => {
-    setPdfName(pdf.name);
+  const handleSelectPdf = (pdf: { id: string; file_name: string }) => {
+    setPdfName(pdf.file_name);
     setPdfStatus("ready");
     setMessages([]);
     setSidebarOpen(false);
@@ -398,7 +402,7 @@ export default function Home() {
                 <div
                   key={pdf.id}
                   className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
-                    pdfName === pdf.name
+                    pdfName === pdf.file_name
                       ? "bg-indigo-50 text-indigo-700"
                       : "text-zinc-600 hover:bg-zinc-50"
                   }`}
@@ -417,7 +421,7 @@ export default function Home() {
                       d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
                     />
                   </svg>
-                  <span className="flex-1 text-sm truncate">{pdf.name}</span>
+                  <span className="flex-1 text-sm truncate">{pdf.file_name}</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -475,7 +479,7 @@ export default function Home() {
             <p className="text-xs text-zinc-500 text-center mt-1.5">
               Are you sure you want to delete{" "}
               <span className="font-medium text-zinc-700">
-                {pdfToDelete.name}
+                {pdfToDelete.file_name}
               </span>
               ? This action cannot be undone.
             </p>
