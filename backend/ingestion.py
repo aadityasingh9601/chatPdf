@@ -50,7 +50,7 @@ def buildIndex(userId:str):
         postgres_connection_string=(
             os.getenv("DATABASE_URL")
         ),
-        collection_name="base_demo",
+        collection_name="embeddings",
         dimension=768
     )
     # Whatever model you chose, look up its dimension and pass that exact number.

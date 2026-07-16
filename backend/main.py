@@ -83,4 +83,19 @@ def get_pdfs(userId:str):
     return response
 
 # Delete user's pdfs.
-
+@app.delete("/api/pdf")
+def delete_Pdf(pdfId:str, fileName:str, userId:str):
+    print(f"pdfId -> {pdfId}")
+    print(f"userId -> {userId}")
+    print(fileName)
+    # Delete embeddings from vector db.
+    response1 = supabase.rpc("delete_embeddings", {
+    "p_file_name": fileName,
+    "p_user_id": userId
+    }).execute()
+    
+    print(response1)
+    # Delete records from normal db.
+    response2 = supabase.table("documents").delete().eq("id",pdfId).execute()
+    print(response2)
+    return "pdf deleted successfully!"

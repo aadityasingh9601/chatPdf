@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadData } from "./lib/actions/uploadData";
 import { sendQuery } from "./lib/actions/sendQuery";
 import { fetchData } from "./lib/actions/fetchData";
+import { deleteData } from "./lib/actions/deleteData";
 import { createClient } from "./lib/supabase/client";
 
 interface Message {
@@ -41,12 +42,12 @@ export default function Home() {
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
-      console.log("44",data);
+      console.log("44", data);
       if (data.user) {
         setUserId(data.user.id);
         // TODO: Fetch user's uploaded PDFs from your backend and call setUploadedPdfs
-       const res = await fetchData(data.user.id);
-       setUploadedPdfs(res?.message.data)
+        const res = await fetchData(data.user.id);
+        setUploadedPdfs(res?.message.data);
       }
     };
     init();
@@ -160,9 +161,15 @@ export default function Home() {
     setSidebarOpen(false);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     // TODO: Implement actual delete logic (call your delete handler)
     console.log("Delete PDF:", pdfToDelete);
+    const res = await deleteData(
+      pdfToDelete?.id,
+      pdfToDelete?.file_name,
+      userId,
+    );
+    console.log(res);
     setUploadedPdfs((prev) => prev.filter((p) => p.id !== pdfToDelete?.id));
     setPdfToDelete(null);
   };
@@ -421,7 +428,9 @@ export default function Home() {
                       d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
                     />
                   </svg>
-                  <span className="flex-1 text-sm truncate">{pdf.file_name}</span>
+                  <span className="flex-1 text-sm truncate">
+                    {pdf.file_name}
+                  </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
