@@ -13,7 +13,7 @@ load_dotenv()
 # userQuery = input()
 # print("AI searching the PDF...")
 
-def answerUserQuery(userId:str, userQuery: str):
+def answerUserQuery(userId:str, pdfName:str, userQuery: str):
     print(f"Received user query -> {userQuery}")
     vector_store = SupabaseVectorStore(
     postgres_connection_string=os.getenv("DATABASE_URL"),
@@ -22,8 +22,11 @@ def answerUserQuery(userId:str, userQuery: str):
   )
 
     index = VectorStoreIndex.from_vector_store(vector_store, embed_model=embed_model)
-
-    query_engine = index.as_query_engine(llm=llm)
+    filters = MetadataFilters(filters=[
+    MetadataFilter(key="user_id", value=userId),
+    MetadataFilter(key="file_name", value=pdfName)
+])
+    query_engine = index.as_query_engine(llm=llm, filters=filters)
     response = query_engine.query(userQuery)
 
     print(Fore.GREEN + str(response))
@@ -32,14 +35,5 @@ def answerUserQuery(userId:str, userQuery: str):
 
 if __name__ == "__main__":
     answerUserQuery()
-
-
-# from llama_index.core.vector_stores import MetadataFilter, MetadataFilters
-
-# filters = MetadataFilters(filters=[
-#     MetadataFilter(key="user_id", value=userId),
-#     MetadataFilter(key="document_id", value=current_document_id)
-# ])
-
 
 # print(textwrap.fill(str(response), 100))

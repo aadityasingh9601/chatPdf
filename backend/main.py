@@ -63,8 +63,10 @@ async def upload_file(userId:str,file: UploadFile = File(...)):
 
 # Ask query.
 @app.get("/api/userquery")
-def user_query(query: str):
-    print("user_query", query)
-    response = answerUserQuery(query)
+def user_query(userId:str, pdfName:str, query: str):
+    print(f"userId -> {userId}")
+    print(f"user query -> {query}")
+    print(f"pdfName -> {pdfName}")
+    response = answerUserQuery(userId, pdfName, query)
     return {"answer": str(response)}
 

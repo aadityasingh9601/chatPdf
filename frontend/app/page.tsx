@@ -17,7 +17,7 @@ interface Message {
 type PdfStatus = "idle" | "selected" | "uploading" | "ready";
 
 export default function Home() {
-  const [pdfStatus, setPdfStatus] = useState<PdfStatus>("idle");
+  const [pdfStatus, setPdfStatus] = useState<PdfStatus>("ready");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -77,7 +77,7 @@ export default function Home() {
     setPdfStatus("uploading");
     // TODO: Replace with actual API call to backend to upload PDF
     // For now, simulate a backend call
-    const res = await uploadData(userId, pdfFile);
+    const res = await uploadData(userId,  pdfFile);
     console.log(res);
 
     setPdfStatus("ready");
@@ -101,7 +101,7 @@ export default function Home() {
 
     // TODO: Replace with actual API call to backend
     // Example endpoint: POST /api/chat with { pdfName, question }
-    const res = await sendQuery(pdfName, question);
+    const res = await sendQuery(userId, pdfName, question);
     console.log(res);
     if (res.success) {
       const assistantMessage: Message = {
