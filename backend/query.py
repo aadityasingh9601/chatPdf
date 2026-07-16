@@ -1,6 +1,7 @@
 from colorama import Fore, Back, Style
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.vector_stores.supabase import SupabaseVectorStore
+from llama_index.core.vector_stores import MetadataFilter, MetadataFilters
 from embeddings import embed_model
 from llm import llm
 import os
@@ -12,7 +13,7 @@ load_dotenv()
 # userQuery = input()
 # print("AI searching the PDF...")
 
-def answerUserQuery(userQuery: str):
+def answerUserQuery(userId:str, userQuery: str):
     print(f"Received user query -> {userQuery}")
     vector_store = SupabaseVectorStore(
     postgres_connection_string=os.getenv("DATABASE_URL"),
@@ -31,6 +32,14 @@ def answerUserQuery(userQuery: str):
 
 if __name__ == "__main__":
     answerUserQuery()
+
+
+# from llama_index.core.vector_stores import MetadataFilter, MetadataFilters
+
+# filters = MetadataFilters(filters=[
+#     MetadataFilter(key="user_id", value=userId),
+#     MetadataFilter(key="document_id", value=current_document_id)
+# ])
 
 
 # print(textwrap.fill(str(response), 100))

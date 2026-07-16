@@ -1,8 +1,11 @@
 from fastapi import FastAPI, File, UploadFile, Form
 from pydantic import BaseModel, Field # To define data model/structure
 from db import supabase
+import os
 import json
+import shutil
 from query import answerUserQuery
+from ingestion import buildIndex
 
 class User(BaseModel):
     name: str | None = Field(default=None)
@@ -10,6 +13,17 @@ class User(BaseModel):
     password: str
 
 app = FastAPI()
+
+def saveFile(file: UploadFile = File(...)):
+    # Create data directory if it doesn't exist
+    os.makedirs("data", exist_ok=True)
+    # Save file directly to data directory
+    file_path = f"data/{file.filename}"
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+def removeFile(file_path:str):
+    os.remove(file_path)
 
 @app.get("/")
 async def root():
@@ -37,8 +51,11 @@ async def createUser(data:User):
 
 # Upload pdf.
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
-    print(file)
+async def upload_file(userId:str,file: UploadFile = File(...)):
+    print(userId)
+    saveFile(file)
+    buildIndex(userId)
+    removeFile(f"data/{file.filename}")
     return {
         "filename": file.filename,
         "content_type": file.content_type,

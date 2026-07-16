@@ -3,6 +3,11 @@
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { uploadData } from "./lib/actions/uploadData";
 import { sendQuery } from "./lib/actions/sendQuery";
+import { createClient } from "./lib/supabase/client";
+
+const supabase = createClient();
+const { data, error } = await supabase.auth.getUserIdentities();
+const userId = data?.identities[0].user_id;
 
 interface Message {
   role: "user" | "assistant";
@@ -72,7 +77,7 @@ export default function Home() {
     setPdfStatus("uploading");
     // TODO: Replace with actual API call to backend to upload PDF
     // For now, simulate a backend call
-    const res = await uploadData(pdfFile);
+    const res = await uploadData(userId, pdfFile);
     console.log(res);
 
     setPdfStatus("ready");

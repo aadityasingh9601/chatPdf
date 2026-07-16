@@ -17,16 +17,22 @@ from llm import llm
 # print(embed_model)
 
 
-def build_index():
+def buildIndex(userId:str):
+    print(f"Inside build_index, userId is -> {userId}")
     # Loading the documents.
     # PDF Reader with `SimpleDirectoryReader`
+    # userId_fn = lambda userId: {"user_id": userId}
     parser = PDFReader()
     file_extractor = {".pdf": parser}
     documents = SimpleDirectoryReader(
-        "../data", file_extractor=file_extractor
+        "./data", file_extractor=file_extractor, file_metadata=lambda file_path: {
+        "user_id": userId,
+        "file_path": file_path
+    }
     ).load_data()
-    
 
+    
+    
     # Transformations -> Chunking, extracting meta-data & embed each chunk.
     text_splitter = SentenceSplitter(chunk_size=512, chunk_overlap=20)
     # Set the text_splitter & embedding model globally.
@@ -63,7 +69,7 @@ def build_index():
 
 
 if __name__ == "__main__": 
-    build_index()
+    buildIndex()
 
 # If you’ve already created an index, you can add new documents to your index using the insert method. See docs
 
