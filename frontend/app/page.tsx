@@ -70,7 +70,6 @@ export default function Home() {
 
   const handleConfirmUpload = async () => {
     setPdfStatus("uploading");
-
     // TODO: Replace with actual API call to backend to upload PDF
     // For now, simulate a backend call
     const res = await uploadData(pdfFile);
@@ -97,7 +96,7 @@ export default function Home() {
 
     // TODO: Replace with actual API call to backend
     // Example endpoint: POST /api/chat with { pdfName, question }
-    const res = await sendQuery(question);
+    const res = await sendQuery(pdfName, question);
     console.log(res);
     if (res.success) {
       const assistantMessage: Message = {

@@ -1,25 +1,39 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { signUpNewUser, signInWithEmail } from "../lib/auth";
 
 export default function AuthPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [mode, setMode] = useState("signup");
+  const [mode, setMode] = useState("signin");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const handleAuth = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim() || isSubmitting) return;
     setIsSubmitting(true);
-    {
-      mode === "signup"
-        ? signUpNewUser(email, password)
-        : signInWithEmail(email, password);
+    setError("");
+
+    try {
+      const result =
+        mode === "signup"
+          ? await signUpNewUser(email, password)
+          : await signInWithEmail(email, password);
+
+      if (result.error) {
+        setError(result.error.message);
+      } else {
+        router.push("/");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    console.log("Auth attempt:", { email, password });
-    setIsSubmitting(false);
   };
 
   return (
@@ -96,6 +110,11 @@ export default function AuthPage() {
                 className="w-full px-4 py-2.5 rounded-xl text-sm text-zinc-900 placeholder:text-zinc-400 bg-zinc-50 border border-zinc-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
               />
             </div>
+
+            {/* Error */}
+            {error && (
+              <p className="text-xs text-red-500 text-center">{error}</p>
+            )}
 
             {/* Submit */}
             <button

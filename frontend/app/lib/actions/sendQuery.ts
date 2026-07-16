@@ -2,7 +2,7 @@
 
 import axios from "axios";
 
-export const sendQuery = async (userQuery: any) => {
+export const sendQuery = async (pdfName:any, userQuery: any) => {
   console.log(userQuery);
   const res = await axios.get(
     `http://localhost:8000/api/userquery?query=${userQuery}`,

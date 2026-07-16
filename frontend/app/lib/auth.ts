@@ -1,33 +1,22 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "./supabase/client";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL ?? "",
-  process.env.SUPABASE_KEY ?? "",
-);
-
-async function signUpNewUser(email: any, password: any) {
-  console.log("in signup route");
+export async function signUpNewUser(email: string, password: string) {
+  const supabase = createClient();
   const { data, error } = await supabase.auth.signUp({
-    email: email,
-    password: password,
+    email,
+    password,
     options: {
       emailRedirectTo: "http://localhost:3000",
     },
   });
-  if (error) console.log(error);
-  console.log(data);
+  return { data, error };
 }
 
-async function signInWithEmail(email: any, password: any) {
-  console.log("in signIn route");
-  console.log(email);
-  console.log(password);
+export async function signInWithEmail(email: string, password: string) {
+  const supabase = createClient();
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password,
+    email,
+    password,
   });
-  if (error) console.log(error);
-  console.log(data);
+  return { data, error };
 }
-
-export { signUpNewUser, signInWithEmail };
