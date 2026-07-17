@@ -8,7 +8,7 @@ load_dotenv()
 key: str = os.getenv("GOOGLE_GEMINI_KEY")
 
 llm = GoogleGenAI(
-    model="gemini-3.5-flash",
+    model="gemini-3.1-flash-lite",
 )
 
 # resp = llm.complete("Who is Paul Graham? Answer in 50 words")

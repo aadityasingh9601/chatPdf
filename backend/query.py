@@ -17,7 +17,7 @@ def answerUserQuery(userId:str, pdfName:str, userQuery: str):
     print(f"Received user query -> {userQuery}")
     vector_store = SupabaseVectorStore(
     postgres_connection_string=os.getenv("DATABASE_URL"),
-    collection_name="base_demo",
+    collection_name="embeddings",
     dimension=768
   )
 

@@ -15,6 +15,8 @@ interface Message {
 
 type PdfStatus = "idle" | "selected" | "uploading" | "ready";
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 export default function Home() {
   const router = useRouter();
   const supabase = createClient();
@@ -26,6 +28,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,10 +45,8 @@ export default function Home() {
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
-      console.log("44", data);
       if (data.user) {
         setUserId(data.user.id);
-        // TODO: Fetch user's uploaded PDFs from your backend and call setUploadedPdfs
         const res = await fetchData(data.user.id);
         setUploadedPdfs(res?.message.data);
       }
@@ -65,13 +66,18 @@ export default function Home() {
   }, [input]);
 
   const handleFile = (file: File) => {
-    if (file.type === "application/pdf") {
-      setPdfFile(file);
-      console.log(file.name);
-      console.log(file);
-      setPdfName(file.name);
-      setPdfStatus("selected");
+    setFileError("");
+    if (file.type !== "application/pdf") {
+      setFileError("Only PDF files are supported");
+      return;
     }
+    if (file.size > MAX_FILE_SIZE) {
+      setFileError("File must be under 5MB");
+      return;
+    }
+    setPdfFile(file);
+    setPdfName(file.name);
+    setPdfStatus("selected");
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -92,17 +98,15 @@ export default function Home() {
 
   const handleConfirmUpload = async () => {
     setPdfStatus("uploading");
-    // TODO: Replace with actual API call to backend to upload PDF
-    // For now, simulate a backend call
     const res = await uploadData(userId, pdfFile);
     console.log(res);
-
     setPdfStatus("ready");
   };
 
   const handleCancelUpload = () => {
     setPdfFile(null);
     setPdfName("");
+    setFileError("");
     setPdfStatus("idle");
   };
 
@@ -116,8 +120,6 @@ export default function Home() {
     setInput("");
     setIsLoading(true);
 
-    // TODO: Replace with actual API call to backend
-    // Example endpoint: POST /api/chat with { pdfName, question }
     const res = await sendQuery(userId, pdfName, question);
     console.log(res);
     if (res.success) {
@@ -151,6 +153,7 @@ export default function Home() {
     setPdfFile(null);
     setPdfName("");
     setMessages([]);
+    setFileError("");
     setPdfStatus("idle");
   };
 
@@ -162,7 +165,6 @@ export default function Home() {
   };
 
   const handleConfirmDelete = async () => {
-    // TODO: Implement actual delete logic (call your delete handler)
     console.log("Delete PDF:", pdfToDelete);
     const res = await deleteData(
       pdfToDelete?.id,
@@ -174,190 +176,6 @@ export default function Home() {
     setPdfToDelete(null);
   };
 
-  // ─── Upload Screen ───
-  if (pdfStatus === "idle" && uploadedPdfs.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <div className="w-full max-w-lg animate-fade-in">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/80 backdrop-blur-sm mb-4 shadow-lg shadow-indigo-500/20">
-              <svg
-                className="w-8 h-8 text-indigo-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-semibold text-white drop-shadow-sm">
-              ChatPDF
-            </h1>
-            <p className="text-sm text-white/70 mt-1">
-              Upload a PDF to start asking questions
-            </p>
-          </div>
-
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onClick={handleUploadClick}
-            className={`
-              group cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center
-              transition-all duration-200 bg-white/90 backdrop-blur-sm shadow-xl shadow-black/5
-              ${
-                isDragging
-                  ? "upload-active border-indigo-400 bg-indigo-50/80"
-                  : "border-zinc-200 hover:border-indigo-300 hover:bg-white"
-              }
-            `}
-          >
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 transition-colors mb-4">
-              <svg
-                className="w-6 h-6 text-zinc-400 group-hover:text-indigo-500 transition-colors"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-                />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-zinc-700">
-              Drop your PDF here, or{" "}
-              <span className="text-indigo-500">browse</span>
-            </p>
-            <p className="text-xs text-zinc-400 mt-2">Supports PDF files</p>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // ─── Confirm Selection ───
-  if (pdfStatus === "selected") {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <div className="w-full max-w-md animate-fade-in">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl shadow-black/5 p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 shrink-0">
-                <svg
-                  className="w-6 h-6 text-indigo-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                  />
-                </svg>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-zinc-900 truncate">
-                  {pdfName}
-                </p>
-                <p className="text-xs text-zinc-400 mt-0.5">PDF document</p>
-              </div>
-              <button
-                onClick={handleCancelUpload}
-                className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18 18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={handleCancelUpload}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmUpload}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/25"
-              >
-                Add PDF
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── Uploading Loader ───
-  if (pdfStatus === "uploading") {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <div className="w-full max-w-md animate-fade-in">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl shadow-black/5 p-8 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-50 mb-4">
-              <svg
-                className="w-7 h-7 text-indigo-500 animate-spin-slow"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-zinc-900">Uploading PDF</p>
-            <p className="text-xs text-zinc-400 mt-1">{pdfName}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── Chat Screen ───
   return (
     <div className="flex flex-1 flex-col h-full relative">
       {/* Sidebar Overlay */}
@@ -374,7 +192,6 @@ export default function Home() {
           sidebarOpen ? "" : "-translate-x-full"
         } transition-transform duration-200 ease-out`}
       >
-        {/* Sidebar Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-100">
           <h3 className="text-sm font-semibold text-zinc-900">Your PDFs</h3>
           <button
@@ -397,7 +214,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* PDF List */}
         <div className="flex-1 overflow-y-auto py-2">
           {uploadedPdfs.length === 0 ? (
             <div className="px-4 py-8 text-center">
@@ -409,7 +225,7 @@ export default function Home() {
                 <div
                   key={pdf.id}
                   className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
-                    pdfName === pdf.file_name
+                    pdfName === pdf.file_name && pdfStatus === "ready"
                       ? "bg-indigo-50 text-indigo-700"
                       : "text-zinc-600 hover:bg-zinc-50"
                   }`}
@@ -511,7 +327,7 @@ export default function Home() {
       )}
 
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-white/80 backdrop-blur-sm">
+      <header className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-white/80 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -548,18 +364,24 @@ export default function Home() {
           </div>
           <div className="min-w-0">
             <h2 className="text-sm font-medium text-zinc-900 truncate">
-              {pdfName || "ChatPDF"}
+              {pdfStatus === "ready" ? pdfName : "ChatPDF"}
             </h2>
-            <p className="text-xs text-zinc-400">Ready to answer questions</p>
+            <p className="text-xs text-zinc-400">
+              {pdfStatus === "ready"
+                ? "Ready to answer questions"
+                : "Upload a PDF to get started"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={removePdf}
-            className="text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors px-3.5 py-2 rounded-lg shadow-sm"
-          >
-            New PDF
-          </button>
+          {pdfStatus === "ready" && (
+            <button
+              onClick={removePdf}
+              className="text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors px-3.5 py-2 rounded-lg shadow-sm"
+            >
+              New PDF
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="text-xs font-medium text-zinc-500 hover:text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors px-3.5 py-2 rounded-lg"
@@ -569,111 +391,279 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        {messages.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center h-full min-h-[300px]">
-            <div className="text-center animate-fade-in">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/60 backdrop-blur-sm mb-3 shadow-sm">
-                <svg
-                  className="w-6 h-6 text-zinc-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
-                  />
-                </svg>
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* ─── Upload Area ─── */}
+        {pdfStatus === "idle" && (
+          <div className="flex flex-1 items-center justify-center p-6 animate-fade-in">
+            <div className="w-full max-w-lg">
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={handleUploadClick}
+                className={`
+                  group cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center
+                  transition-all duration-200 bg-white/90 backdrop-blur-sm shadow-xl shadow-black/5
+                  ${
+                    isDragging
+                      ? "upload-active border-indigo-400 bg-indigo-50/80"
+                      : "border-zinc-200 hover:border-indigo-300 hover:bg-white"
+                  }
+                `}
+              >
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 group-hover:bg-indigo-100 transition-colors mb-4">
+                  <svg
+                    className="w-6 h-6 text-zinc-400 group-hover:text-indigo-500 transition-colors"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-zinc-700">
+                  Drop your PDF here, or{" "}
+                  <span className="text-indigo-500">browse</span>
+                </p>
+                <p className="text-xs text-zinc-400 mt-2">
+                  PDF only, max 5MB
+                </p>
               </div>
-              <p className="text-sm text-white/70">
-                Ask anything about this document
-              </p>
+              {fileError && (
+                <p className="text-xs text-red-500 text-center mt-3 animate-fade-in">
+                  {fileError}
+                </p>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFile(file);
+                }}
+              />
             </div>
           </div>
-        ) : (
-          <div className="max-w-2xl mx-auto space-y-6">
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`animate-fade-in flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-indigo-500 text-white rounded-br-md shadow-md shadow-indigo-500/20"
-                      : "bg-white/90 backdrop-blur-sm text-zinc-700 rounded-bl-md shadow-sm"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start animate-fade-in">
-                <div className="bg-white/90 backdrop-blur-sm rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
-                  <div className="flex gap-1.5">
-                    <span
-                      className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <span
-                      className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
-                      style={{ animationDelay: "300ms" }}
-                    />
+        )}
+
+        {/* ─── Confirm Selection (inline) ─── */}
+        {pdfStatus === "selected" && (
+          <div className="flex flex-1 items-center justify-center p-6 animate-fade-in">
+            <div className="w-full max-w-md">
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl shadow-black/5 p-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 shrink-0">
+                    <svg
+                      className="w-6 h-6 text-indigo-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                      />
+                    </svg>
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-zinc-900 truncate">
+                      {pdfName}
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-0.5">PDF document</p>
+                  </div>
+                  <button
+                    onClick={handleCancelUpload}
+                    className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18 18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex gap-3 mt-5">
+                  <button
+                    onClick={handleCancelUpload}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmUpload}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/25"
+                  >
+                    Add PDF
+                  </button>
                 </div>
               </div>
-            )}
-            <div ref={messagesEndRef} />
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Input */}
-      <div className="border-t border-white/10 bg-white/80 backdrop-blur-sm p-4">
-        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-          <div className="flex items-end gap-2 bg-white rounded-2xl border border-zinc-200 focus-within:border-indigo-300 transition-colors px-4 py-2 shadow-sm">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question about your PDF..."
-              rows={1}
-              className="flex-1 bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 resize-none outline-none py-1.5 max-h-40"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="shrink-0 w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:bg-zinc-200 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-            >
-              <svg
-                className="w-4 h-4 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
-                />
-              </svg>
-            </button>
+        {/* ─── Uploading Loader (inline) ─── */}
+        {pdfStatus === "uploading" && (
+          <div className="flex flex-1 items-center justify-center p-6 animate-fade-in">
+            <div className="w-full max-w-md">
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl shadow-black/5 p-8 text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-50 mb-4">
+                  <svg
+                    className="w-7 h-7 text-indigo-500 animate-spin-slow"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-zinc-900">
+                  Uploading PDF
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">{pdfName}</p>
+              </div>
+            </div>
           </div>
-          <p className="text-[11px] text-white/50 mt-2 text-center">
-            Press Enter to send, Shift+Enter for new line
-          </p>
-        </form>
+        )}
+
+        {/* ─── Chat Messages ─── */}
+        {pdfStatus === "ready" && (
+          <div className="flex-1 overflow-y-auto px-4 py-6">
+            {messages.length === 0 ? (
+              <div className="flex flex-1 items-center justify-center h-full min-h-[300px]">
+                <div className="text-center animate-fade-in">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/60 backdrop-blur-sm mb-3 shadow-sm">
+                    <svg
+                      className="w-6 h-6 text-zinc-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-white/70">
+                    Ask anything about this document
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="max-w-2xl mx-auto space-y-6">
+                {messages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`animate-fade-in flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        msg.role === "user"
+                          ? "bg-indigo-500 text-white rounded-br-md shadow-md shadow-indigo-500/20"
+                          : "bg-white/90 backdrop-blur-sm text-zinc-700 rounded-bl-md shadow-sm"
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start animate-fade-in">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                      <div className="flex gap-1.5">
+                        <span
+                          className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
+                          style={{ animationDelay: "0ms" }}
+                        />
+                        <span
+                          className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
+                          style={{ animationDelay: "150ms" }}
+                        />
+                        <span
+                          className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce"
+                          style={{ animationDelay: "300ms" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Chat Input ─── */}
+        {pdfStatus === "ready" && (
+          <div className="border-t border-white/10 bg-white/80 backdrop-blur-sm p-4 shrink-0">
+            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+              <div className="flex items-end gap-2 bg-white rounded-2xl border border-zinc-200 focus-within:border-indigo-300 transition-colors px-4 py-2 shadow-sm">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask a question about your PDF..."
+                  rows={1}
+                  className="flex-1 bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 resize-none outline-none py-1.5 max-h-40"
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                  className="shrink-0 w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:bg-zinc-200 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                >
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-[11px] text-white/50 mt-2 text-center">
+                Press Enter to send, Shift+Enter for new line
+              </p>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

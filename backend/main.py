@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from pydantic import BaseModel, Field # To define data model/structure
 from db import supabase
 import os
@@ -13,6 +13,8 @@ class User(BaseModel):
     password: str
 
 app = FastAPI()
+
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 def saveFile(file: UploadFile = File(...)):
     # Create data directory if it doesn't exist
@@ -53,6 +55,10 @@ async def createUser(data:User):
 @app.post("/api/upload")
 async def upload_file(userId:str,file: UploadFile = File(...)):
     print(userId)
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 5MB limit")
+    file.file.seek(0)
     saveFile(file)
     buildIndex(userId)
     # Save the document in documents table.
