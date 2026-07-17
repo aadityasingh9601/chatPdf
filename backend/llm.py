@@ -1,5 +1,5 @@
-from dotenv import load_dotenv, dotenv_values
 from llama_index.llms.google_genai import GoogleGenAI
+from dotenv import load_dotenv, dotenv_values
 import os
 load_dotenv()
 
