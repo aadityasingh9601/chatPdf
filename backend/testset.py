@@ -1,64 +1,57 @@
-from llama_index.core import SimpleDirectoryReader
-# from llama_index.llms.google_genai import GoogleGenAI
-from llama_index.readers.file import PDFReader
-# from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
-from ragas.testset import TestsetGenerator
-from dotenv import load_dotenv, dotenv_values
-
 import os
+import pandas as pd
+from dotenv import load_dotenv
+from llama_index.readers.file import PDFReader
+from llama_index.core import SimpleDirectoryReader
+from ragas.llms import llm_factory
+from ragas.embeddings.base import embedding_factory
+from ragas.testset import TestsetGenerator
+from openai import OpenAI
+from google import genai
+
 load_dotenv()
 
-ai_key: str = os.getenv("GOOGLE_GEMINI_KEY")
-print(ai_key)
+print(os.getenv("GROQ_API_KEY"))
 
-# parser = PDFReader()
-# file_extractor = {".pdf": parser}
-# documents = SimpleDirectoryReader("./data", file_extractor=file_extractor).load_data()
-
-# # generator with openai models
-# generator_llm = GoogleGenAI(model="gemini-3.5-flash")
-# embeddings = GoogleGenAI(model="gemini-embedding-2-preview")
-
-# generator = TestsetGenerator.from_llama_index(
-#     llm=generator_llm,
-#     embedding_model=embeddings,
-# )
-
-# # generate testset
-# testset = generator.generate_with_llamaindex_docs(
-#     documents,
-#     testset_size=5,
-# )
-
-# print(f"testset -> {testset}")
-
-# df = testset.to_pandas()
-# df.head()
-
-# # Build the query engine next.
-
-import os
-from google import genai
-from ragas.llms import llm_factory
-from ragas.embeddings import embedding_factory
-from ragas.testset import TestsetGenerator
-
+# Documents (same as ingestion.py)
 parser = PDFReader()
 file_extractor = {".pdf": parser}
-documents = SimpleDirectoryReader("./data", file_extractor=file_extractor).load_data()
+documents = SimpleDirectoryReader(
+    "./data", file_extractor=file_extractor
+).load_data()
 
-# LLM
-client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
-llm = llm_factory("gemini-3.5-flash", provider="google", client=client)
+# LLM — Groq free tier (llama-3.3-70b-versatile, 30 req/min)
+# Ragas instructor adapter doesn't work with groq SDK directly,
+# so we use OpenAI client pointed at Groq's OpenAI-compatible endpoint.
+groq_client = OpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1",
+)
+llm = llm_factory("llama-3.3-70b-versatile", provider="openai", client=groq_client)
 
-# Embeddings
-embeddings = embedding_factory("google", client=client)
+# Embeddings — Google free tier (groq doesn't serve embeddings)
+genai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+embeddings = embedding_factory("google", client=genai_client)
 
 # Generator
 generator = TestsetGenerator(llm=llm, embedding_model=embeddings)
-testset = generator.generate_with_llamaindex_docs(documents, testset_size=20)
+testset = generator.generate_with_llamaindex_docs(
+    documents,
+    testset_size=10,
+    with_debugging_logs=True,
+)
 
-print(f"testset -> {testset}")
+# Save to backend directory
+output_dir = os.path.dirname(os.path.abspath(__file__))
 
+csv_path = os.path.join(output_dir, "testset.csv")
 df = testset.to_pandas()
-df.head()
+df.to_csv(csv_path, index=False)
+
+json_path = os.path.join(output_dir, "testset.json")
+df.to_json(json_path, orient="records", indent=2)
+
+print(f"Generated {len(df)} test samples")
+print(f"Saved to: {csv_path}")
+print(f"Saved to: {json_path}")
+print(df.head())
