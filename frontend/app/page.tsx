@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { uploadData } from "./lib/actions/uploadData";
-import { sendQuery } from "./lib/actions/sendQuery";
 import { fetchData } from "./lib/actions/fetchData";
 import { deleteData } from "./lib/actions/deleteData";
 import { createClient } from "./lib/supabase/client";
@@ -32,6 +31,7 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const accumulatedRef = useRef("");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadedPdfs, setUploadedPdfs] = useState<
@@ -119,21 +119,77 @@ export default function Home() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    accumulatedRef.current = "";
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-    const res = await sendQuery(userId, pdfName, question);
-    console.log(res);
-    if (res.success) {
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: res.message.answer,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } else {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Something went wrong!" },
-      ]);
+    try {
+      const res = await fetch(
+        `http://localhost:8000/api/userquery/stream?userId=${userId}&pdfName=${encodeURIComponent(pdfName)}&query=${encodeURIComponent(question)}`
+      );
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          if (buffer.trim()) {
+            const leftover = buffer.trim();
+            if (leftover.startsWith("data: ")) {
+              const data = leftover.slice(6);
+              if (data !== "[DONE]") {
+                accumulatedRef.current += data;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    role: "assistant",
+                    content: accumulatedRef.current,
+                  };
+                  return updated;
+                });
+              }
+            }
+          }
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data: ")) {
+            const data = trimmed.slice(6);
+            if (data === "[DONE]") break;
+            accumulatedRef.current += data;
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                role: "assistant",
+                content: accumulatedRef.current,
+              };
+              return updated;
+            });
+          }
+        }
+      }
+    } catch {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: "Something went wrong! Please try again.",
+        };
+        return updated;
+      });
     }
+
     setIsLoading(false);
   };
 
@@ -177,7 +233,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-1 flex-col h-full relative">
+    <div className="flex flex-col flex-1 min-h-0 h-full relative">
       {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div
@@ -193,7 +249,7 @@ export default function Home() {
         } transition-transform duration-200 ease-out`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-100">
-          <h3 className="text-sm font-semibold text-zinc-900">Your PDFs</h3>
+          <h3 className="text-sm font-semibold text-zinc-900">Knowledge Sources</h3>
           <button
             onClick={() => setSidebarOpen(false)}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors"
@@ -217,7 +273,7 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto py-2">
           {uploadedPdfs.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-xs text-zinc-400">No PDFs uploaded yet</p>
+              <p className="text-xs text-zinc-400">Add a PDF to get started</p>
             </div>
           ) : (
             <div className="space-y-0.5 px-2">
@@ -556,7 +612,7 @@ export default function Home() {
 
         {/* ─── Chat Messages ─── */}
         {pdfStatus === "ready" && (
-          <div className="flex-1 overflow-y-auto px-4 py-6">
+          <div className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
             {messages.length === 0 ? (
               <div className="flex flex-1 items-center justify-center h-full min-h-[300px]">
                 <div className="text-center animate-fade-in">
@@ -587,15 +643,15 @@ export default function Home() {
                     key={i}
                     className={`animate-fade-in flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                        msg.role === "user"
-                          ? "bg-indigo-500 text-white rounded-br-md shadow-md shadow-indigo-500/20"
-                          : "bg-white/90 backdrop-blur-sm text-zinc-700 rounded-bl-md shadow-sm"
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-indigo-500 text-white rounded-br-md shadow-md shadow-indigo-500/20"
+                      : "bg-white/90 backdrop-blur-sm text-zinc-700 rounded-bl-md shadow-sm"
+                  }`}
+                >
+                  {msg.content}
+                </div>
                   </div>
                 ))}
                 {isLoading && (

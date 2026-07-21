@@ -1,10 +1,12 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field # To define data model/structure
 from db import supabase
 import os
 import json
 import shutil
-from query import answerUserQuery
+from query import answerUserQuery, answerUserQueryStream
 from ingestion import buildIndex
 
 class User(BaseModel):
@@ -13,6 +15,14 @@ class User(BaseModel):
     password: str
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
@@ -79,6 +89,22 @@ def user_query(userId:str, pdfName:str, query: str):
     print(f"pdfName -> {pdfName}")
     response = answerUserQuery(userId, pdfName, query)
     return {"answer": str(response)}
+
+# Ask query (streaming).
+@app.get("/api/userquery/stream")
+async def user_query_stream(userId: str, pdfName: str, query: str):
+    print(f"userId -> {userId}")
+    print(f"user query (stream) -> {query}")
+    print(f"pdfName -> {pdfName}")
+    return StreamingResponse(
+        answerUserQueryStream(userId, pdfName, query),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 # Fetch all user's pdfs.
 @app.get("/api/getpdfs")
