@@ -3,7 +3,7 @@ from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.vector_stores.supabase import SupabaseVectorStore
 from llama_index.core.vector_stores import MetadataFilter, MetadataFilters
 from embeddings import embed_model
-from llm import llm
+from llm import llm, llm2
 import os
 import textwrap
 from dotenv import load_dotenv
@@ -26,7 +26,7 @@ def answerUserQuery(userId:str, pdfName:str, userQuery: str):
     MetadataFilter(key="user_id", value=userId),
     MetadataFilter(key="file_name", value=pdfName)
 ])
-    query_engine = index.as_query_engine(llm=llm, filters=filters)
+    query_engine = index.as_query_engine(llm=llm2, filters=filters)
     response = query_engine.query(userQuery)
 
     print(Fore.GREEN + str(response))

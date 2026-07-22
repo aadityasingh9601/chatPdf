@@ -419,10 +419,10 @@ export default function Home() {
             </svg>
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-medium text-zinc-900 truncate">
+            <h2 className="text-md font-medium text-zinc-900 truncate">
               {pdfStatus === "ready" ? pdfName : "ChatPDF"}
             </h2>
-            <p className="text-xs text-zinc-400">
+            <p className="text-sm text-zinc-400">
               {pdfStatus === "ready"
                 ? "Ready to answer questions"
                 : "Upload a PDF to get started"}
@@ -433,14 +433,14 @@ export default function Home() {
           {pdfStatus === "ready" && (
             <button
               onClick={removePdf}
-              className="text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors px-3.5 py-2 rounded-lg shadow-sm"
+              className="text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors px-3.5 py-2 rounded-lg shadow-sm"
             >
               New PDF
             </button>
           )}
           <button
             onClick={handleLogout}
-            className="text-xs font-medium text-zinc-500 hover:text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors px-3.5 py-2 rounded-lg"
+            className="text-sm font-medium text-zinc-500 hover:text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors px-3.5 py-2 rounded-lg"
           >
             Logout
           </button>
@@ -714,7 +714,7 @@ export default function Home() {
                   </svg>
                 </button>
               </div>
-              <p className="text-[11px] text-white/50 mt-2 text-center">
+              <p className="text-[13px] text-black/50 mt-2 text-center">
                 Press Enter to send, Shift+Enter for new line
               </p>
             </form>

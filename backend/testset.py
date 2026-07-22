@@ -1,3 +1,4 @@
+# Logic to generate testset data for our RAG pipeline.
 import os
 import pandas as pd
 from dotenv import load_dotenv
@@ -9,9 +10,8 @@ from ragas.testset import TestsetGenerator
 from openai import OpenAI
 from google import genai
 
-load_dotenv()
 
-print(os.getenv("GROQ_API_KEY"))
+load_dotenv()
 
 # Documents (same as ingestion.py)
 parser = PDFReader()
