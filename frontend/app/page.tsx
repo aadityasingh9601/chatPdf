@@ -186,6 +186,37 @@ export default function Home() {
     setPdfToDelete(null);
   };
 
+  const handleResend = async (question: string) => {
+    if (isLoading) return;
+    setMessages((prev) => [...prev, { role: "user", content: question }]);
+    setIsLoading(true);
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+    try {
+      const res = await sendQuery(userId, pdfName, question);
+      const answer = res?.message?.answer || "No answer received.";
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: "assistant", content: answer };
+        return updated;
+      });
+    } catch {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: "Something went wrong! Please try again.",
+        };
+        return updated;
+      });
+    }
+    setIsLoading(false);
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0 h-full relative">
       {/* Sidebar Overlay */}
@@ -597,15 +628,39 @@ export default function Home() {
                     key={i}
                     className={`animate-fade-in flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-indigo-500 text-white rounded-br-md shadow-md shadow-indigo-500/20"
-                      : "bg-white/90 backdrop-blur-sm text-zinc-700 rounded-bl-md shadow-sm"
-                  }`}
-                >
-                  {msg.content}
-                </div>
+                    <div className="group max-w-[85%] relative">
+                      <div
+                        className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                          msg.role === "user"
+                            ? "bg-indigo-500 text-white rounded-br-md shadow-md shadow-indigo-500/20"
+                            : "bg-white/90 backdrop-blur-sm text-zinc-700 rounded-bl-md shadow-sm"
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                      {msg.role === "user" && msg.content && (
+                        <button
+                          onClick={() => handleResend(msg.content)}
+                          className="absolute -left-9 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50"
+                          title="Resend"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+                          </svg>
+                        </button>
+                      )}
+                      {msg.role === "assistant" && msg.content && (
+                        <button
+                          onClick={() => handleCopy(msg.content)}
+                          className="absolute -right-9 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50"
+                          title="Copy"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9.75a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {isLoading && (
