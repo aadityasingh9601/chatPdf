@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadData } from "./lib/actions/uploadData";
 import { fetchData } from "./lib/actions/fetchData";
 import { deleteData } from "./lib/actions/deleteData";
+import { sendQuery } from "./lib/actions/sendQuery";
 import { createClient } from "./lib/supabase/client";
 
 interface Message {
@@ -31,7 +32,6 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const accumulatedRef = useRef("");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadedPdfs, setUploadedPdfs] = useState<
@@ -119,66 +119,20 @@ export default function Home() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-    accumulatedRef.current = "";
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const res = await fetch(
-        `http://localhost:8000/api/userquery/stream?userId=${userId}&pdfName=${encodeURIComponent(pdfName)}&query=${encodeURIComponent(question)}`
-      );
+      const res = await sendQuery(userId, pdfName, question);
+      const answer = res?.message?.answer || "No answer received.";
 
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          if (buffer.trim()) {
-            const leftover = buffer.trim();
-            if (leftover.startsWith("data: ")) {
-              const data = leftover.slice(6);
-              if (data !== "[DONE]") {
-                accumulatedRef.current += data;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = {
-                    role: "assistant",
-                    content: accumulatedRef.current,
-                  };
-                  return updated;
-                });
-              }
-            }
-          }
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith("data: ")) {
-            const data = trimmed.slice(6);
-            if (data === "[DONE]") break;
-            accumulatedRef.current += data;
-            setMessages((prev) => {
-              const updated = [...prev];
-              updated[updated.length - 1] = {
-                role: "assistant",
-                content: accumulatedRef.current,
-              };
-              return updated;
-            });
-          }
-        }
-      }
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: answer,
+        };
+        return updated;
+      });
     } catch {
       setMessages((prev) => {
         const updated = [...prev];
